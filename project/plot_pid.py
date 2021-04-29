@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 def read_steer_data():
  steer_file = 'steer_pid_data.txt'
- steer_df = pd.read_csv(steer_file, delim_whitespace = True, header = None, usecols = [0, 1, 2])
- steer_df.columns = ['Iteration', 'Error Steering', 'Steering Output']
+ steer_df = pd.read_csv(steer_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6])
+ steer_df.columns = ['Iteration', 'Error Steering', 'Steering Output', 'waypoint_x', 'waypoint_y', 'x_pos', 'y_pos']
  print(f'Steer data:\n{steer_df.head()}\n')
  return steer_df
 
@@ -21,7 +21,13 @@ def plot_steer_data(steer_df, n_rows):
  steer_df2 = steer_df[:n_rows]
  steer_df2.plot(x = steer_df.columns[0], y = [steer_df.columns[1], steer_df.columns[2]], kind = 'line')
  plt.show()
- 
+
+def plot_pos_data(pos_df2, n_rows):
+ pos_df2 = pos_df2[:n_rows]
+ plt.plot(pos_df2.waypoint_y, pos_df2.waypoint_x)
+ plt.plot(pos_df2.y_pos, pos_df2.x_pos)
+ plt.legend(['request', 'current_pos'])
+ plt.show()
     
 def plot_throttle_data(throttle_df, n_rows):   
  throttle_df2 = throttle_df[:n_rows]
@@ -33,6 +39,7 @@ def main():
  steer_df = read_steer_data()
  throttle_df = read_throttle_data()
  n_rows = -1 #2000
+ plot_pos_data(steer_df,n_rows)
  plot_steer_data(steer_df, n_rows)
  plot_throttle_data(throttle_df, n_rows)
  
