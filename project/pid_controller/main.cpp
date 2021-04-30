@@ -53,11 +53,13 @@
 #include <vector>
 #include <cmath>
 #include <time.h>
+#include <tuple>
 
 using namespace std;
 using json = nlohmann::json;
 
 #define _USE_MATH_DEFINES
+#define PI 3.14159265
 
 string hasData(string s) {
   auto found_null = s.find("null");
@@ -80,6 +82,15 @@ template <typename T> int sgn(T val) {
 double angle_between_points(double x1, double y1, double x2, double y2){
   return atan2(y2-y1, x2-x1);
 }
+
+double yaw_correction(double yaw) {
+    
+  	if(yaw < -PI){yaw += 2 * PI;}
+    if(yaw > PI){yaw -= 2 * M_PI;}
+    
+    return yaw;
+}
+
 
 BehaviorPlannerFSM behavior_planner(
       P_LOOKAHEAD_TIME, P_LOOKAHEAD_MIN, P_LOOKAHEAD_MAX, P_SPEED_LIMIT,
@@ -195,6 +206,69 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 	obst_flag = true;
 }
 
+tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& waypoints_y, double& x, double& y, double& yaw){
+  /**
+    Computes the cross track error
+
+    @param waypoints_x x-axis vector from waypoints coming from path planner 
+    @param waypoints_y y-axis vector from waypoints coming from path planner 
+    @param x  current location of ego car.
+    @param x  current location of ego car.
+    @return cross track error_calculation
+    bar and "," as the half bar.
+  */
+  size_t size_waypoints = waypoints_x.size()-1;
+  int segment = 0;
+  double angle_factor = -1.0;
+  while (segment<size_waypoints) 
+  {
+    double x_2 = waypoints_x[segment+1];
+    double y_2 = waypoints_y[segment+1];
+    double x_1 = waypoints_x[segment];
+    double y_1 = waypoints_y[segment];
+    double Rx = x - x_1;
+    double Ry = y - y_1;
+    double delta_x = x_2 - x_1;
+    double delta_y = y_2 - y_1;
+    double delta_angle = yaw_correction(atan2(delta_y, delta_x));
+    double delta_x_squared = delta_x * delta_x;
+    double delta_y_squared = delta_y * delta_y;
+    double u = (Rx*delta_x+Ry*delta_y)/sqrt(delta_x_squared+delta_y_squared);
+    
+
+    //cout << "*********u:*******:"<< u << endl;
+    if (u > 1.0)
+    {
+      if(segment == size_waypoints-1){
+      
+        return {0.0, segment};
+
+      }
+      segment ++;
+      
+    }else
+    {
+      double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
+      double delta_alpha = angle_factor*(yaw_correction(yaw) - delta_angle)/(PI);
+      if(cte!=cte){cte=0.0;}
+      cout << "*********delta alpha normalized:*******: "<<  delta_alpha << endl;
+      cout << "*********delta alpha ******* : "<<  (yaw - delta_angle)*180/PI << endl;
+      cout << "*********CTE CTE CTE:*******: "<<  cte << endl;
+       if(abs(cte)>=abs(delta_alpha)){
+        	return {cte, segment};	
+        }
+        else{
+          	
+        	return {cte, segment};	
+        }
+      
+      
+    }
+  } 
+ 
+}
+
+
 int main ()
 {
   cout << "starting server" << endl;
@@ -218,15 +292,18 @@ int main ()
   /**
   * TODO (Step 1): create pid (pid_steer) for steer command and initialize values
   **/
-
+  PID pid_steer = PID();
+  pid_steer.Init(0.25, 0.01, 0.5, 1.2, -1.2);
+  //pid_steer.Init(0.20, 0.001, 0.1, 1.2, -1.2);
 
   // initialize pid throttle
   /**
   * TODO (Step 1): create pid (pid_throttle) for throttle command and initialize values
   **/
-
-  PID pid_steer = PID();
   PID pid_throttle = PID();
+  //pid_throttle.Init(0.1, 0.01, 0.05, 1.0, -1.0);
+  pid_throttle.Init(0.20, 0.01, 0.01, 1.0, -1.0);
+
 
   h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
@@ -288,35 +365,48 @@ int main ()
           /**
           * TODO (step 3): uncomment these lines
           **/
-//           // Update the delta time with the previous command
-//           pid_steer.UpdateDeltaTime(new_delta_time);
+          // Update the delta time with the previous command
+          pid_steer.UpdateDeltaTime(new_delta_time);
 
           // Compute steer error
+          
           double error_steer;
-
-
           double steer_output;
-
+		  int segment;
           /**
           * TODO (step 3): compute the steer error (error_steer) from the position and the desired trajectory
           **/
-//           error_steer = 0;
-
+          
+          
+          
+          tie(error_steer, segment) = cte_calculation(x_points, y_points, x_position, y_position, yaw);
+          cout << "*********waypoints: *******: "<< x_points[segment+1]<<","<< y_points[segment+1] << endl;
+          cout << "*********current position*******: "<< x_position <<"," << y_position << endl;
+		      cout << "*********segment: *******: "<< segment << endl;
+          cout << "*********cte_calculation*******: "<< error_steer << endl;
+          cout << "*********yaw:*******: "<< yaw*180/PI << endl;
+          cout<< "****** dt = ********"<<pid_steer.dt<<endl;
+          cout<< "****** time = ********"<<timer<<endl;
+		  
           /**
           * TODO (step 3): uncomment these lines
           **/
-//           // Compute control to apply
-//           pid_steer.UpdateError(error_steer);
-//           steer_output = pid_steer.TotalError();
+           // Compute control to apply
+           pid_steer.UpdateError(error_steer);
+           steer_output = pid_steer.TotalError();
 
-//           // Save data
-//           file_steer.seekg(std::ios::beg);
-//           for(int j=0; j < i - 1; ++j) {
-//               file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-//           }
-//           file_steer  << i ;
-//           file_steer  << " " << error_steer;
-//           file_steer  << " " << steer_output << endl;
+           // Save data
+           file_steer.seekg(std::ios::beg);
+           for(int j=0; j < i - 1; ++j) {
+               file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+           }
+           file_steer  << i ;
+           file_steer  << " " << error_steer;
+           file_steer  << " " << steer_output;
+           file_steer  << " " << x_points[segment+1]; 
+           file_steer  << " " << y_points[segment+1];
+           file_steer  << " " << x_position;
+           file_steer  << " " << y_position << endl;
 
           ////////////////////////////////////////
           // Throttle control
@@ -325,8 +415,8 @@ int main ()
           /**
           * TODO (step 2): uncomment these lines
           **/
-//           // Update the delta time with the previous command
-//           pid_throttle.UpdateDeltaTime(new_delta_time);
+           // Update the delta time with the previous command
+          pid_throttle.UpdateDeltaTime(new_delta_time);
 
           // Compute error of speed
           double error_throttle;
@@ -334,9 +424,12 @@ int main ()
           * TODO (step 2): compute the throttle error (error_throttle) from the position and the desired speed
           **/
           // modify the following line for step 2
-          error_throttle = 0;
-
-
+          
+          error_throttle = velocity - v_points[v_points.size()-1];
+         
+          //error_throttle = velocity - v_points[segment];
+          
+          
 
           double throttle_output;
           double brake_output;
@@ -344,28 +437,45 @@ int main ()
           /**
           * TODO (step 2): uncomment these lines
           **/
-//           // Compute control to apply
-//           pid_throttle.UpdateError(error_throttle);
-//           double throttle = pid_throttle.TotalError();
+          // Compute control to apply
+          pid_throttle.UpdateError(error_throttle);
+          double throttle = pid_throttle.TotalError();
+          
+          //reset integral errors every certain time as an "anti reset windup"
+          //if(timer%30==0){
+          //	pid_throttle.i_error = 0.0;
+          //  pid_steer.i_error = 0.0;
+          //}
+          
+          
+          if (segment >= 18 && error_steer==0.0)
+          {
+            throttle = -0.2;
+            
+          }
+          if(spirals_x.size()==0 || spirals_y.size()==0){
+          	throttle = -1.0;
+          }
+          // Adapt the negative throttle to break
+          if (throttle > 0.0) {
+            throttle_output = throttle;
+            brake_output = 0;
+          } else {
+            throttle_output = 0;
+            pid_throttle.i_error = 0.0;
+            pid_steer.i_error = 0.0;
+            brake_output = -throttle;
+          }
 
-//           // Adapt the negative throttle to break
-//           if (throttle > 0.0) {
-//             throttle_output = throttle;
-//             brake_output = 0;
-//           } else {
-//             throttle_output = 0;
-//             brake_output = -throttle;
-//           }
-
-//           // Save data
-//           file_throttle.seekg(std::ios::beg);
-//           for(int j=0; j < i - 1; ++j){
-//               file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-//           }
-//           file_throttle  << i ;
-//           file_throttle  << " " << error_throttle;
-//           file_throttle  << " " << brake_output;
-//           file_throttle  << " " << throttle_output << endl;
+          // Save data
+          file_throttle.seekg(std::ios::beg);
+          for(int j=0; j < i - 1; ++j){
+              file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+          }
+          file_throttle  << i ;
+          file_throttle  << " " << error_throttle;
+          file_throttle  << " " << brake_output;
+          file_throttle  << " " << throttle_output << endl;
 
 
           // Send control
