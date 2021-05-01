@@ -425,7 +425,7 @@ int main ()
           
           //error_throttle = velocity - v_points[v_points.size()-1];
          
-          error_throttle = velocity - v_points[segment-1];
+          error_throttle = velocity - v_points[segment+1];
           
           
 
