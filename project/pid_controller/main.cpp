@@ -219,7 +219,7 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
   */
   size_t size_waypoints = waypoints_x.size()-1;
   int segment = 0;
-  double angle_factor = -1.0;
+  double angle_factor = 1.0;
   while (segment<size_waypoints) 
   {
     double x_2 = waypoints_x[segment+1];
@@ -230,7 +230,7 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
     double Ry = y - y_1;
     double delta_x = x_2 - x_1;
     double delta_y = y_2 - y_1;
-    double delta_angle = yaw_correction(atan2(delta_y, delta_x));
+    double delta_angle = atan2(delta_y, delta_x);
     double delta_x_squared = delta_x * delta_x;
     double delta_y_squared = delta_y * delta_y;
     double u = (Rx*delta_x+Ry*delta_y)/sqrt(delta_x_squared+delta_y_squared);
@@ -241,26 +241,24 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
     {
       if(segment == size_waypoints-1){
       
-        return {0.0, segment};
-
+//        return {0.0, segment};
+        double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
+      	double delta_alpha = angle_factor*yaw_correction(yaw - delta_angle)/(PI);
+      	if(cte!=cte){cte=0.0;}
+        return {cte+delta_alpha, segment};
+		
       }
       segment ++;
       
     }else
     {
       double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
-      double delta_alpha = angle_factor*(yaw_correction(yaw) - delta_angle)/(PI);
+      double delta_alpha = angle_factor*yaw_correction(yaw - delta_angle)/(PI);
       if(cte!=cte){cte=0.0;}
       cout << "*********delta alpha normalized:*******: "<<  delta_alpha << endl;
       cout << "*********delta alpha ******* : "<<  (yaw - delta_angle)*180/PI << endl;
       cout << "*********CTE CTE CTE:*******: "<<  cte << endl;
-       if(abs(cte)>=abs(delta_alpha)){
-        	return {cte, segment};	
-        }
-        else{
-          	
-        	return {cte, segment};	
-        }
+      return {cte+delta_alpha, segment};
       
       
     }
@@ -293,8 +291,8 @@ int main ()
   * TODO (Step 1): create pid (pid_steer) for steer command and initialize values
   **/
   PID pid_steer = PID();
-  pid_steer.Init(0.25, 0.01, 0.5, 1.2, -1.2);
-  //pid_steer.Init(0.20, 0.001, 0.1, 1.2, -1.2);
+  //pid_steer.Init(0.25, 0.01, 0.5, 1.2, -1.2);
+  pid_steer.Init(0.25, 0.001, 0.2, 1.2, -1.2);
 
   // initialize pid throttle
   /**
@@ -302,7 +300,7 @@ int main ()
   **/
   PID pid_throttle = PID();
   //pid_throttle.Init(0.1, 0.01, 0.05, 1.0, -1.0);
-  pid_throttle.Init(0.20, 0.01, 0.01, 1.0, -1.0);
+  pid_throttle.Init(0.25, 0.01, 0.01, 1.0, -1.0);
 
 
   h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
@@ -425,9 +423,9 @@ int main ()
           **/
           // modify the following line for step 2
           
-          error_throttle = velocity - v_points[v_points.size()-1];
+          //error_throttle = velocity - v_points[v_points.size()-1];
          
-          //error_throttle = velocity - v_points[segment];
+          error_throttle = velocity - v_points[segment-1];
           
           
 
@@ -442,19 +440,23 @@ int main ()
           double throttle = pid_throttle.TotalError();
           
           //reset integral errors every certain time as an "anti reset windup"
-          //if(timer%30==0){
+          //if(timer%5==0){
           //	pid_throttle.i_error = 0.0;
-          //  pid_steer.i_error = 0.0;
+          //	pid_steer.i_error = 0.0;
           //}
           
           
-          if (segment >= 18 && error_steer==0.0)
+          if (segment >= v_points.size()-2)// && error_steer==0.0)
           {
-            throttle = -0.2;
-            
+            //throttle = -0.05;
+            //throttle = 0.3;
+            throttle -= 0.1;
+            pid_throttle.i_error = 0.0;
+            pid_steer.i_error = 0.0;
           }
           if(spirals_x.size()==0 || spirals_y.size()==0){
           	throttle = -1.0;
+            
           }
           // Adapt the negative throttle to break
           if (throttle > 0.0) {
