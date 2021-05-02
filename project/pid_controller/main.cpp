@@ -218,6 +218,7 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
     bar and "," as the half bar.
   */
   size_t size_waypoints = waypoints_x.size()-1;
+  if(size_waypoints==0){return {0.0, 100};}
   int segment = 0;
   double angle_factor = 1.0;
   while (segment<size_waypoints) 
@@ -245,7 +246,7 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
         double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
       	double delta_alpha = angle_factor*yaw_correction(yaw - delta_angle)/(PI);
       	if(cte!=cte){cte=0.0;}
-        return {cte+delta_alpha, segment};
+        return {-(cte+delta_alpha), segment};
 		
       }
       segment ++;
@@ -258,7 +259,7 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
       cout << "*********delta alpha normalized:*******: "<<  delta_alpha << endl;
       cout << "*********delta alpha ******* : "<<  (yaw - delta_angle)*180/PI << endl;
       cout << "*********CTE CTE CTE:*******: "<<  cte << endl;
-      return {cte+delta_alpha, segment};
+      return {-(cte+delta_alpha), segment};
       
       
     }
@@ -292,15 +293,15 @@ int main ()
   **/
   PID pid_steer = PID();
   //pid_steer.Init(0.25, 0.01, 0.5, 1.2, -1.2);
-  pid_steer.Init(0.25, 0.001, 0.2, 1.2, -1.2);
-
+  //pid_steer.Init(0.25, 0.001, 0.2, 1.2, -1.2);
+  pid_steer.Init(0.25, 0.001, 0.3, 1.2, -1.2);
   // initialize pid throttle
   /**
   * TODO (Step 1): create pid (pid_throttle) for throttle command and initialize values
   **/
   PID pid_throttle = PID();
   //pid_throttle.Init(0.1, 0.01, 0.05, 1.0, -1.0);
-  pid_throttle.Init(0.25, 0.01, 0.01, 1.0, -1.0);
+  pid_throttle.Init(0.25, 0.005, 0.01, 1.0, -1.0);
 
 
   h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
@@ -425,7 +426,7 @@ int main ()
           
           //error_throttle = velocity - v_points[v_points.size()-1];
          
-          error_throttle = velocity - v_points[segment+1];
+          error_throttle = v_points[segment+1] - velocity;
           
           
 
@@ -446,15 +447,17 @@ int main ()
           //}
           
           
-          if (segment >= v_points.size()-2)// && error_steer==0.0)
+          if (segment >= v_points.size()-2)// in case there is no new position request we decrease velocity
           {
             //throttle = -0.05;
             //throttle = 0.3;
-            throttle -= 0.1;
-            pid_throttle.i_error = 0.0;
+            //throttle -= 0.1;
+            pid_throttle.i_error -= 5.0;
             pid_steer.i_error = 0.0;
+            throttle = pid_throttle.TotalError();
+            
           }
-          if(spirals_x.size()==0 || spirals_y.size()==0){
+          if(spirals_x.size()==0 || spirals_y.size()==0 || segment==100){
           	throttle = -1.0;
             
           }
