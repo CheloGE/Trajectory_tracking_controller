@@ -2,15 +2,25 @@
 
 # Proportional-Integral-Derivative (PID)
 
-In this project, you will apply the skills you have acquired in this course to design a PID controller to perform vehicle trajectory tracking. Given a trajectory as an array of locations, and a simulation environment, you will design and code a PID controller and test its efficiency on the CARLA simulator used in the industry.
+In this project, I designed 2 PID controllers to perform vehicle trajectory tracking. Given a trajectory as an array of locations, and a simulation environment, a PID controller algorithm was developed, then implemented for controlling the steering and the throttle of the vehicle. Finally it was tested on the CARLA simulator used in the industry for assessing its performance.
+
+
+<center>
+<div class="row">
+  <div class="column">
+    <img src="./project/pid_controller/screenshot/driving_car_part1.gif" width="300">
+    <img src="./project/pid_controller/screenshot/driving_car_part2.gif" width="300" >
+    
+  </div>
+   <center><span class="caption"> short illustrations to depict the performance of the PID controller  </span></center>
+</div>
+</center>
 
 ### Installation
 
-Run the following commands to install the starter code in the Udacity Workspace:
+The project was developed in the Udacity workspcae. Hence, run the following commands to install the starter code in the Udacity Workspace:
 
-Clone the <a href="https://github.com/udacity/nd013-c6-control-starter/tree/master" target="_blank">repository</a>:
-
-`git clone https://github.com/udacity/nd013-c6-control-starter.git`
+place this project inside the Udacity workspace and the run the following steps to compile the project and to run the Carla simulator:
 
 ## Run Carla Simulator
 
@@ -31,11 +41,11 @@ Open new window
 * `rm -rf rpclib`
 * `git clone https://github.com/rpclib/rpclib.git`
 * `cmake .`
-* `make` (This last command compiles your c++ code, run it after every change in your code)
+* `make` (This last command compiles the c++ code)
 
 ## Testing
 
-To test your installation run the following commands.
+To run the simulator on the desktop environment please do the following:
 
 * `cd nd013-c6-control-starter/project`
 * `./run_main_pid.sh`
@@ -49,58 +59,53 @@ If error bind is already in use, or address already being used
 * `kill id`
 
 
-## Project Instructions
+## Environment Description
 
-In the previous project you built a path planner for the autonomous vehicle. Now you will build the steer and throttle controller so that the car follows the trajectory.
+In the previous project we built a path planner for the autonomous vehicle. So in this project we focus on building the steer and throttle controller so that the car follows the trajectory.
 
 You will design and run the a PID controller as described in the previous course.
 
-In the directory [/pid_controller](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller)  you will find the files [pid.cpp](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/pid.cpp)  and [pid.h](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/pid.h). This is where you will code your pid controller.
-The function pid is called in [main.cpp](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/main.cpp).
+The most relevant files in this project are:
 
-### Step 1: Build the PID controller object
-Complete the TODO in the [pid_controller.h](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/pid_controller.h) and [pid_controller.cpp](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/pid_controller.cpp).
+* [pid_controller.h](./project/pid_controller/pid_controller.h) - In this file we can find the definition of all functions and variables involving the pid_controller
+* [pid_controller.cpp](./project/pid_controller/pid_controller.cpp) - In this file we can find the implementation of the PID controller.
+* [main.cpp](./project/pid_controller/main.cpp) - In this file we defined all the pipeline to control the steering and throttle and follow the path planner's waypoints. 
+* [plot_pid.py](./project/plot_pid.py) - In this file we implemented some code to better visualize the performance of our controllers. It has the following 3 plots:
+    * **Position request(waypoints) vs real Vehicles position (in CARLA)**. This plot was extremely useful to debug the code while developing since here we could easily visualize if the controller is overshooting or if it is oscillating. 
+    * **Steering plot** - Containing 2 signals Steering error and PID Steering output(AKA control output or control signal)
+    * **Throttle plot** - Containing 3 signals Throttle error, PID Throttle output(when the control output is positive) and Brake output (when the control output is negative).
 
-Run the simulator and see in the desktop mode the car in the CARLA simulator. Take a screenshot and add it to your report. The car should not move in the simulation.
-### Step 2: PID controller for throttle:
-1) In [main.cpp](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/main.cpp), complete the TODO (step 2) to compute the error for the throttle pid. The error is the speed difference between the actual speed and the desired speed.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Note:** The values of the error and the pid command are saved in [throttle_pid_data.txt](./project/throttle_pid_data.txt) and [steer_pid_data.txt](./project/steer_pid_data.txt)
 
-Useful variables:
-- The last point of **v_points** vector contains the velocity computed by the path planner.
-- **velocity** contains the actual velocity.
-- The output of the controller should be inside [-1, 1].
-
-2) Comment your code to explain why did you computed the error this way.
-
-3) Tune the parameters of the pid until you get satisfying results (a perfect trajectory is not expected).
-
-### Step 3: PID controller for steer:
-1) In [main.cpp](https://github.com/udacity/nd013-c6-control-starter/tree/mathilde/project_c6/project/pid_controller/main.cpp), complete the TODO (step 3) to compute the error for the steer pid. The error is the angle difference between the actual steer and the desired steer to reach the planned position.
-
-Useful variables:
-- The variable **y_points** and **x_point** gives the desired trajectory planned by the path_planner.
-- **yaw** gives the actual rotational angle of the car.
-- The output of the controller should be inside [-1.2, 1.2].
-- If needed, the position of the car is stored in the variables **x_position**, **y_position** and **z_position**
-
-2) Comment your code to explain why did you computed the error this way.
-
-3) Tune the parameters of the pid until you get satisfying results (a perfect trajectory is not expected).
-
-### Step 4: Evaluate the PID efficiency
-The values of the error and the pid command are saved in thottle_data.txt and steer_data.txt.
-Plot the saved values using the command (in nd013-c6-control-refresh/project):
+**Note 2:** Run the plots by using the command (in nd013-c6-control-refresh/project):
 
 ```
 python3 plot_pid.py
 ```
 
-You might need to install a few additional python modules: 
+You must install a few additional python modules to run these plots: 
 
 ```
 pip3 install pandas
 pip3 install matplotlib
 ```
+
+* **Useful variables for Throttle controller:**
+    - The last point of **v_points** vector contains the velocity computed by the path planner.
+    - **velocity** contains the actual velocity.
+    - The output of the controller should be inside [-1, 1].
+
+* **Useful variables for Steering controller:**
+    - The variable **y_points** and **x_point** gives the desired trajectory planned by the path_planner.
+    - **yaw** gives the actual rotational angle of the car.
+    - The output of the controller should be inside [-1.2, 1.2].
+    - If needed, the position of the car is stored in the variables **x_position**, **y_position** and **z_position**
+
+
+
+
+
+
 
 Answer the following questions:
 - Add the plots to your report and explain them (describe what you see)
@@ -112,7 +117,7 @@ Answer the following questions:
 
 ### Tips:
 
-- When you wil be testing your c++ code, restart the Carla simulator to remove the former car from the simulation.
+- When testing the c++ code, restart the Carla simulator to remove the former car from the simulation.
 - If the simulation freezes on the desktop mode but is still running on the terminal, close the desktop and restart it.
-- When you will be tuning the PID parameters, try between those values:
+
 
