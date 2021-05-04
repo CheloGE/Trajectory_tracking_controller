@@ -30,19 +30,22 @@ void PID::Init(double Kpi, double Kii, double Kdi, double output_lim_maxi, doubl
 }
 
 
-void PID::UpdateError(double cte) {
+void PID::UpdateError(double cte, bool debugMode /*= false*/) {
    /**
    * TODO: Update PID errors based on cte.
    **/
   
-  if(dt>0){d_error = (cte - p_error)/dt;}
+  if(dt>0){d_error = (cte - p_error)/dt;} //sanity check to avoid division by zero
   else{d_error = 0.0;}
   p_error = cte;
   i_error += cte*dt;
-  cout << "######## p_error #######:"<< p_error << endl;
-  cout << "######## d_error #######:"<< d_error << endl;
-  cout << "######## i_error #######:"<< i_error << endl;
   
+  if(debugMode){
+    // debugging error signals to monitor performance of the controller
+    cout << "######## p_error #######:"<< p_error << endl;
+    cout << "######## d_error #######:"<< d_error << endl;
+    cout << "######## i_error #######:"<< i_error << endl;
+  }
   
 }
 

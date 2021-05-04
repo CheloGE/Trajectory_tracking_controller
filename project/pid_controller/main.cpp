@@ -206,7 +206,7 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 	obst_flag = true;
 }
 
-tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& waypoints_y, double& x, double& y, double& yaw){
+tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& waypoints_y, double& x, double& y, double& yaw, bool debugMode=false){
   /**
     Computes the cross track error
 
@@ -214,8 +214,8 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
     @param waypoints_y y-axis vector from waypoints coming from path planner 
     @param x  current location of ego car.
     @param x  current location of ego car.
-    @return cross track error_calculation
-    bar and "," as the half bar.
+    @return tuple (cross track error_calculation+delta_angle,segment of the waypoints that matched the current location)
+    
   */
   size_t size_waypoints = waypoints_x.size()-1;
   if(size_waypoints==0){return {0.0, 100};}
@@ -237,15 +237,15 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
     double u = (Rx*delta_x+Ry*delta_y)/sqrt(delta_x_squared+delta_y_squared);
     
 
-    //cout << "*********u:*******:"<< u << endl;
+    
     if (u > 1.0)
     {
       if(segment == size_waypoints-1){
-      
-//        return {0.0, segment};
+        //calculating the cross track error for last segment 
         double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
+        //calculating the delta angle between the yaw and the waypoint values for last segment
       	double delta_alpha = angle_factor*yaw_correction(yaw - delta_angle)/(PI);
-      	if(cte!=cte){cte=0.0;}
+      	if(cte!=cte){cte=0.0;} //returns a cte zero in case cte is NaN
         return {-(cte+delta_alpha), segment};
 		
       }
@@ -253,12 +253,18 @@ tuple<double, int> cte_calculation(vector<double>& waypoints_x, vector<double>& 
       
     }else
     {
+
+      //calculating the cross track error for current segment
       double cte = (Ry*delta_x - Rx*delta_y)/sqrt(delta_x_squared+delta_y_squared);
+      //calculating the delta angle between the yaw and the waypoint values for current segment
       double delta_alpha = angle_factor*yaw_correction(yaw - delta_angle)/(PI);
-      if(cte!=cte){cte=0.0;}
-      cout << "*********delta alpha normalized:*******: "<<  delta_alpha << endl;
-      cout << "*********delta alpha ******* : "<<  (yaw - delta_angle)*180/PI << endl;
-      cout << "*********CTE CTE CTE:*******: "<<  cte << endl;
+      if(cte!=cte){cte=0.0;} //returns a cte zero in case cte is NaN
+      // The following three lines are for visualizing on console the current status of the error
+      if(debugMode){
+        cout << "*********delta alpha normalized:*******: "<<  delta_alpha << endl;
+        cout << "*********delta alpha ******* : "<<  (yaw - delta_angle)*180/PI << endl;
+        cout << "********* CTE *******: "<<  cte << endl;
+      }
       return {-(cte+delta_alpha), segment};
       
       
@@ -292,8 +298,13 @@ int main ()
   * TODO (Step 1): create pid (pid_steer) for steer command and initialize values
   **/
   PID pid_steer = PID();
+  //pid_steer.Init(0.15, 0.00, 0.0, 1.2, -1.2);
+  //pid_steer.Init(0.25, 0.00, 0.0, 1.2, -1.2);
+  //pid_steer.Init(0.25, 0.01, 0.0, 1.2, -1.2);
   //pid_steer.Init(0.25, 0.01, 0.5, 1.2, -1.2);
   //pid_steer.Init(0.25, 0.001, 0.2, 1.2, -1.2);
+  //pid_steer.Init(0.25, 0.002, 0.2, 1.2, -1.2);
+  //pid_steer.Init(0.25, 0.002, 0.2, 1.2, -1.2);
   pid_steer.Init(0.25, 0.001, 0.3, 1.2, -1.2);
   // initialize pid throttle
   /**
@@ -301,6 +312,10 @@ int main ()
   **/
   PID pid_throttle = PID();
   //pid_throttle.Init(0.1, 0.01, 0.05, 1.0, -1.0);
+  //pid_throttle.Init(0.15, 0.01, 0.05, 1.0, -1.0);
+  //pid_throttle.Init(0.25, 0.01, 0.05, 1.0, -1.0);
+  //pid_throttle.Init(0.25, 0.005, 0.05, 1.0, -1.0);
+  //pid_throttle.Init(0.25, 0.005, 0.03, 1.0, -1.0);
   pid_throttle.Init(0.25, 0.005, 0.01, 1.0, -1.0);
 
 
@@ -379,13 +394,14 @@ int main ()
           
           
           tie(error_steer, segment) = cte_calculation(x_points, y_points, x_position, y_position, yaw);
+          // These lines help checking the status of the vehicle from the console
           cout << "*********waypoints: *******: "<< x_points[segment+1]<<","<< y_points[segment+1] << endl;
           cout << "*********current position*******: "<< x_position <<"," << y_position << endl;
-		      cout << "*********segment: *******: "<< segment << endl;
-          cout << "*********cte_calculation*******: "<< error_steer << endl;
+		      cout << "********* segment: *******: "<< segment << endl;
+          cout << "*********steer_error_calculation*******: "<< error_steer << endl;
           cout << "*********yaw:*******: "<< yaw*180/PI << endl;
-          cout<< "****** dt = ********"<<pid_steer.dt<<endl;
-          cout<< "****** time = ********"<<timer<<endl;
+          cout<< "****** dt: ********"<<pid_steer.dt<<endl;
+          cout<< "****** time: ********"<<timer<<endl;
 		  
           /**
           * TODO (step 3): uncomment these lines
@@ -440,21 +456,15 @@ int main ()
           pid_throttle.UpdateError(error_throttle);
           double throttle = pid_throttle.TotalError();
           
-          //reset integral errors every certain time as an "anti reset windup"
-          //if(timer%5==0){
-          //	pid_throttle.i_error = 0.0;
-          //	pid_steer.i_error = 0.0;
-          //}
           
           
-          if (segment >= v_points.size()-2)// in case there is no new position request we decrease velocity
+          // reset integrators whenever there is no match with a waypoint line
+          // for throttle we reduce it slowly instead of resetting it completely to avoid sudden stops
+          if (segment >= v_points.size()-2)
           {
-            //throttle = -0.05;
-            //throttle = 0.3;
-            //throttle -= 0.1;
+            
             pid_throttle.i_error -= 5.0;
             pid_steer.i_error = 0.0;
-            throttle = pid_throttle.TotalError();
             
           }
           if(spirals_x.size()==0 || spirals_y.size()==0 || segment==100){
