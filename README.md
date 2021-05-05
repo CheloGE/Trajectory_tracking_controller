@@ -253,23 +253,50 @@ In summary while tunning the PID controllers I found the following:
 
 In this case, it was not that difficult to fine-tune the model. Hence, a trial and error approach was enough. However, I can see the benefit of using some algorithm to fine-tune the controller's parametrs such as **twiddle**. This approach is like a brute force algorithm that tries some combinations of kp,kd,ki and gradually modify them, to finally keep the combination that produces the least error of all. 
 
+Another way to fine-tune a PID whenever you want to use it for an online task, is an adaptive PID controller. 
+One very interesting approach is the self-adaptive Neural Network PID controller.  
+
+<center><img src = "./project/pid_controller/screenshot/self_adaptive_PIDcontroller.jpeg"/></center>
+<center><span class="caption"> Diagram taken from <cite><a href="https://www.osapublishing.org/jocn/home.cfm">Here</a></cite> </span></center>
+
+
+As you can see above we basically feed the errors to the network, sometimes they can be the proportional, integral, and differential errors or errors in the past (as in a time delay network shown in the figure above) and it learns all the weights to output a certain kp, ki and kd gains to reduce the error of the task. This is a very interesting approach that we could also implement in this project as future work.  
+
+
 **Pros and Cons of a model free controller such as a PID controller?**
 
 #### Pros 
-* PID is a model free controller because it does not require the model of the system (in this case the car) to design the controller. Many times it is very difficult to get the system's model. Hence having a model free controller is handy. 
+* PID is a model free controller because it does not require the model of the system (in this case the car) to design the controller. Many times it is very difficult to get the system's model. Hence having a model free controller is handy. Especially when the system's model is not given or impossible to obtain.  
 
-* It can be computationally cheaper and also easier to implement. 
+* It can be computationally cheaper and also easier to implement.
+
+* Model-based controllers can lead to implementation not well suited for the task if the model is too abstract. This problem does not affect model-free controllers.
+
 
 #### Cons
 
-Model free controllers can 
+* You might need to tune the model free model differently for edge cases which makes tuning more dangerous. Whereas in model-based algorithms you sort of have an idea already of what will happen.
 
-Answer the following questions:
-- Add the plots to your report and explain them (describe what you see)
-- What is the effect of the PID according to the plots, how each part of the PID affects the control command?
-- How would you design a way to automatically tune the PID parameters?
-- PID controller is a model free controller, i.e. it does not use a model of the car. Could you explain the pros and cons of this type of controller?
-- (Optional) What would you do to improve the PID controller?
+* If a great model is developed for certain application, the model-based controller will most likely outperform a model free model. 
+
+* Sometimes it takes a lot of effort to find the best parameters for the model free model.
+
+* There is an additional CON for traditional PID controllers (this does not necessarily apply for all model-free models), but PID controllers are designed for controlling linear systems, they do not work as great for non-linear systems (unless we add some other features to them or we linearize the system). Whereas model-based controllers can simply use a non-linear model and get very good results. For instance, in terms of the vehicle, we could use the bicycle model, which is a very popular non-linear model that captures the dynamics of the vehicle in a simplified way. 
+
+
+## Conclusion
+
+In conclusion this was a very interesting problem that served as a good example and practice on how a simple PID controller can be used to follow a path from a trajectory given by the path planner component. We learned how each term of the PID affect in the response to trajectory waypoint requests and to some perturbation to the system such as paths that are very sharp. Overall this project is a great point to begin inmmersing in the world of controll systems. 
+
+The final result of my implementation can be found in the following [video](./project/pid_controller/screenshot/PID_controller_in_action.mp4)
+
+## Future work
+
+* As future work, we can implement the so call self-adaptive PID controller to see if the PID parameters that the network finds are better than the gains I found by trial and error. 
+
+* Try a model-based controller with a non-linear model of the car, perhaps using the bicycle model. A model that comes to my mind right now is an MPC controller since this controller allows us to set constraints that we can use for tunning a very smooth trajectory follow and consequently comfort of the user (for instance constraints in acceleration or constraints in jerk). 
+
+
 
 
 
