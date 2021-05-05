@@ -235,7 +235,7 @@ After implementing all the solutions to the problems found in the 1st version I 
 <center><img src = "./project/pid_controller/screenshot/throttle_verFinal.png"/></center>
 <center><span class="caption"> Error throttle (blue) VS Throttle control output (green) VS Brake output (orange) </span></center>
 
-You can see that the main difference is in the throttle controller where the error does not change that harshly as in the 1st version. This yielded a more comfortable velocity for the user. Also, no bugs founded during this test case. 
+You can see that the main difference is in the throttle controller where the error does not change that harshly as in the 1st version. This yielded a more comfortable velocity for the user. Also, bugs do not crashed our implememtation during this test case. 
 
 
 ### Lessons learned from the PID controller
